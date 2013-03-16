@@ -1,0 +1,8 @@
+syntax: regexp
+bin/.*
+\.settings/.*
+.*/packed/.*
+.*/unpacked/.*
+.*/output/.*
+.*/textures/.*
+.*/backup/.*

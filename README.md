@@ -37,16 +37,16 @@ https://github.com/tescott/RubeLoader
 
 Follow these steps to configure your Eclipse project:
 
-1) Clone the Box2DControllers repo.
-2) Clone the RubeLoader repo.
-3) Open a new workspace in Eclipse.
-4) Import Box2DControllers to your workspace.
-5) Import RubeLoader to your workspace.
-6) Import RubeLoaderTest-android to your workspace.
-7) Import RubeLoaderTestWithBox2dControllers to your workspace.
-8) Import RubeLoaderTestWithBox2dControllers-desktop to your workspace.
-9) Resolve any dependency issues.  You may have to close / reopen Eclipse here.
-10) Right-click on RubeLoaderTestWithBox2dControllers-desktop > Run As > Java Application > RubeLoaderTestDesktop.
+1. Clone the Box2DControllers repo.
+2. Clone the RubeLoader repo.
+3. Open a new workspace in Eclipse.
+4. Import Box2DControllers to your workspace.
+5. Import RubeLoader to your workspace.
+6. Import RubeLoaderTest-android to your workspace.
+7. Import RubeLoaderTestWithBox2dControllers to your workspace.
+8. Import RubeLoaderTestWithBox2dControllers-desktop to your workspace.
+9. Resolve any dependency issues.  You may have to close / reopen Eclipse here.
+10. Right-click on RubeLoaderTestWithBox2dControllers-desktop > Run As > Java Application > RubeLoaderTestDesktop.
 
 The included example shows four "pools" of water at the bottom of the view, showing the effects of a buoyancy controller for light objects
 and heavy objects, as well as currents.  At the top of the view you will see the effects of a gravity controller.

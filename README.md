@@ -54,8 +54,13 @@ and heavy objects, as well as currents.  At the top of the view you will see the
 Tips
 ====
 * The various controller parameters are defined as custom properties in the JSON file exported from RUBE.
-* For buoyancy, less dense fixture values will cause objects to sink.  More dense will cause them to float higher.
+* For buoyancy, less dense fixture values will cause objects to submerge further.
 * For buoyancy, higher linear drag values will cause objects to bob / oscillate more. 
+
+Limitations
+===========
+* Buoyancy requires a fixed surface height
+* Buoyancy needs to be scaled based on densities.  Bodies with very small densities will 'popcorn' from controllers that behave normally for bodies with larger densities.  
 
 Screenshot of Example
 =====================

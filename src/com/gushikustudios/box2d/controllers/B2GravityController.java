@@ -5,16 +5,20 @@ import com.badlogic.gdx.physics.box2d.Body;
 
 public class B2GravityController extends B2Controller
 {
-   private Vector2 mControllerGravity;
+   private final Vector2 mControllerGravity = new Vector2();
    
-   private static final float GRAVITY_CONSTANT = 9.8f;
+   private static final Vector2 mTmp = new Vector2(); // shared field
+   
+   public static final Vector2 DEFAULT_GRAVITY = new Vector2(0,9.8f); // 'normal' gravity is negative, this is anti-gravity
    
    public B2GravityController()
    {
-      mControllerGravity = new Vector2();
-      mControllerGravity.x = 0;
-      mControllerGravity.y = GRAVITY_CONSTANT;
-      
+      this(DEFAULT_GRAVITY);
+   }
+   
+   public B2GravityController(Vector2 gravity)
+   {
+      mControllerGravity.set(gravity);
       mControllerType = B2Controller.GRAVITY_CONTROLLER;
    }
    
@@ -37,13 +41,8 @@ public class B2GravityController extends B2Controller
          for (int i = 0; i < m_bodyList.size; i++)
          {
             Body body = m_bodyList.get(i);
-            float mass = body.getMass();
-            float forceX = mass * mControllerGravity.x;
-            float forceY = mass * mControllerGravity.y;
-            Vector2 pos = body.getPosition();
-            float pointX = pos.x;
-            float pointY = pos.y;
-            body.applyForce(forceX, forceY, pointX, pointY);
+            mTmp.set(mControllerGravity).mul(body.getMass());
+            body.applyForce(mTmp, body.getPosition());
          }
       }
    }

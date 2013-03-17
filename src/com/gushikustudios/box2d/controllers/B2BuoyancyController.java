@@ -51,7 +51,7 @@ public class B2BuoyancyController extends B2Controller
 
    // If false, bodies are assumed to be uniformly dense, otherwise use the
    // shapes' densities
-   public boolean mUseDensity = false;
+   public boolean mUseDensity = true;
 
    //
    // Shared values
@@ -64,13 +64,13 @@ public class B2BuoyancyController extends B2Controller
    //
    // Default values
    //
-   private static final Vector2 DEFAULT_SURFACE_NORMAL = new Vector2(0, 1); // point up
-   private static final Vector2 DEFAULT_FLUID_VELOCITY = new Vector2(0, 0); // zero velocity / no current
-   private static final Vector2 DEFAULT_FLUID_GRAVITY = new Vector2(0, -9.8f); // standard gravity
-   private static final float DEFAULT_SURFACE_HEIGHT = 0; // Box2d height of the surface
-   private static final float DEFAULT_FLUID_DENSITY = 2f;
-   private static final float DEFAULT_LINEAR_DRAG = 5f;
-   private static final float DEFAULT_ANGULAR_DRAG = 2f;
+   public static final Vector2 DEFAULT_SURFACE_NORMAL = new Vector2(0, 1); // point up
+   public static final Vector2 DEFAULT_FLUID_VELOCITY = new Vector2(0, 0); // zero velocity / no current
+   public static final Vector2 DEFAULT_FLUID_GRAVITY = new Vector2(0, -9.8f); // standard gravity
+   public static final float DEFAULT_SURFACE_HEIGHT = 0; // Box2d height of the surface
+   public static final float DEFAULT_FLUID_DENSITY = 2f;
+   public static final float DEFAULT_LINEAR_DRAG = 5f;
+   public static final float DEFAULT_ANGULAR_DRAG = 2f;
    
    private static final boolean DEBUG_BUOYANCY = false;
 
@@ -152,9 +152,9 @@ public class B2BuoyancyController extends B2Controller
 
       if (DEBUG_BUOYANCY)
       {
-         // Run debug w/HCR to see the effects fo different fluid densities / linear drag
-         mFluidDensity = 0.0025f;
-         mLinearDrag = 0.01f;
+         // Run debug w/HCR to see the effects of different fluid densities / linear drag
+         mFluidDensity = 0.5f;
+         mLinearDrag = 5;
          mAngularDrag = 2;
       }
       

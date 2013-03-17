@@ -1,13 +1,11 @@
 package com.gushikustudios.box2d.controllers;
 
 import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
 
 public class B2Controller
 {
    protected Array<Body> m_bodyList;
-   private World m_world;
    public int mControllerType;
    boolean mIsActive; // defines whether or not the controller is presently active 
    
@@ -53,16 +51,6 @@ public class B2Controller
          m_bodyList.clear();
       }
       m_bodyList = null;
-   }
-
-   public World getWorld()
-   {
-      return m_world;
-   }
-   
-   public void setWorld(World world)
-   {
-      m_world = world;
    }
 
    public Array<Body> getBodyList()

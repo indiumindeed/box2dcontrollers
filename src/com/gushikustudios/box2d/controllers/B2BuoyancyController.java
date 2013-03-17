@@ -11,119 +11,172 @@ import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.Shape;
 
+/**
+ * The buoyancy calculations originated from wck which in turn came from Boris the Brave's work. iforce2d has an
+ * excellent
+ * write-up on buoyancy here: https://www.iforce2d.net/b2dtut/buoyancy.
+ * <p>
+ * 
+ * Tips:<br>
+ * - Set the surface normal in the direction 'out' from the fluid<br>
+ * - Set the fluid velocity if you want the fluid to have a 'current', like a stream or river<br>
+ * - Set the gravity according to your world's gravity<br>
+ * - Set the surface height to the Box2D height of the fluid. Make sure you are using world coordinates!<br>
+ * - Linear drag should be roughly 5x the fluid density<br>
+ * - Extremely low density objects may 'popcorn' from the fluid. Adjust density and linear drag to compensate. If you
+ * have a mix of low and high density objects... well, good luck.<br>
+ * - This project is integrated with https://github.com/tescott/RubeLoader. Use hot-code replacement / debug mode to
+ * experiment with different objects and different densities<br>
+ * 
+ * @author tescott
+ * 
+ */
 public class B2BuoyancyController extends B2Controller
 {
-   /// The outer surface normal
-   public Vector2 normal;
-   /// The height of the fluid surface along the normal
-   public float offset;
-   /// The fluid density
-   public float density = 2.0f;
-   /// Fluid velocity, for drag calculations
-   public Vector2 velocity;
-   /// Linear drag co-efficient
-   public float linearDrag = 5;
-   /// Linear drag co-efficient
-   public float angularDrag = 2;
-   /// If false, bodies are assumed to be uniformly dense, otherwise use the shapes densities
-   public boolean useDensity = false; //False by default to prevent a gotcha
-   /// Gravity vector, if the world's gravity is not used
-   public Vector2 gravity;
+
+   // The outer surface normal. Change this to point out from the surface. Assume up.
+   public final Vector2 mSurfaceNormal = new Vector2();
+   // Fluid velocity, for drag calculations. Creates a directional 'current' for the fluid.
+   public final Vector2 mFluidVelocity = new Vector2();
+   // Gravity vector of the fluid. Used to provide upward force within the fluid
+   public final Vector2 mGravity = new Vector2();
+   // Linear drag co-efficient. Recommend that this is about 5x the angular drag.
+   public float mLinearDrag;
+   // Angular drag co-efficient
+   public float mAngularDrag;
+   // The height of the Box2D fluid surface at the normal
+   public float mSurfaceHeight;
+   // The fluid density
+   public float mFluidDensity;
+
+   // If false, bodies are assumed to be uniformly dense, otherwise use the
+   // shapes' densities
+   public boolean mUseDensity = false;
+
+   //
+   // Shared values
+   //
+   private static final Vector2 mTmp = new Vector2(); // scratch value for various calculations
+   private static final Vector2 mSC = new Vector2(); //
+   private static final Vector2 mAreac = new Vector2(); // centroid of the area
+   private static final Vector2 mMassc = new Vector2(); // centroid of the mass
+
+   //
+   // Default values
+   //
+   private static final Vector2 DEFAULT_SURFACE_NORMAL = new Vector2(0, 1); // point up
+   private static final Vector2 DEFAULT_FLUID_VELOCITY = new Vector2(0, 0); // zero velocity / no current
+   private static final Vector2 DEFAULT_FLUID_GRAVITY = new Vector2(0, -9.8f); // standard gravity
+   private static final float DEFAULT_SURFACE_HEIGHT = 0; // Box2d height of the surface
+   private static final float DEFAULT_FLUID_DENSITY = 2f;
+   private static final float DEFAULT_LINEAR_DRAG = 5f;
+   private static final float DEFAULT_ANGULAR_DRAG = 2f;
    
-   private Vector2 tmp;
-   private Vector2 sc;
-   private Vector2 areac;
-   private Vector2 massc;
+   private static final boolean DEBUG_BUOYANCY = false;
 
    public B2BuoyancyController()
    {
-      normal = new Vector2(0,1);
-      velocity = new Vector2();
-      gravity = new Vector2(0,-9.8f);
-      
-      mControllerType = B2Controller.BUOYANCY_CONTROLLER;
-      
-      tmp = new Vector2();
-      sc = new Vector2();
-      areac = new Vector2();
-      massc = new Vector2();
+      this(DEFAULT_SURFACE_NORMAL, DEFAULT_FLUID_VELOCITY, DEFAULT_FLUID_GRAVITY, 
+            DEFAULT_SURFACE_HEIGHT, DEFAULT_FLUID_DENSITY, DEFAULT_LINEAR_DRAG, DEFAULT_ANGULAR_DRAG);
    }
-   
-//   public override function Apply(body:b2Body):void {
-//      if(!body.IsAwake() || !body.IsDynamic()){
-//         return;
-//      }
-//      for(var f:b2Fixture = body.GetFixtureList(); f; f = f.GetNext()) {
-//         ApplyToFixture(f);
-//      }
-//      
-//   }
-   
-   public boolean ApplyToFixture(Fixture f)
+
+   public B2BuoyancyController(Vector2 surfaceNormal, Vector2 fluidVelocity, Vector2 gravity, 
+                               float surfaceHeight, float fluidDensity, float linearDrag, float angularDrag)
+   {
+      mSurfaceNormal.set(surfaceNormal);
+      mFluidVelocity.set(fluidVelocity);
+      mGravity.set(gravity);
+      mSurfaceHeight = surfaceHeight;
+      mFluidDensity = fluidDensity;
+      mLinearDrag = linearDrag;
+      mAngularDrag = angularDrag;
+      mControllerType = B2Controller.BUOYANCY_CONTROLLER;
+   }
+
+   /**
+    * @param f - fixture that is affected
+    * @return true if force was applied, false otherwise.
+    */
+   private boolean ApplyToFixture(Fixture f)
    {
       Body body = f.getBody();
-      areac.set(0,0);
-      massc.set(0,0);
+      mAreac.set(Vector2.Zero);
+      mMassc.set(Vector2.Zero);
       float area = 0;
       float mass = 0;
-      
+
+      // Get shape for displacement area calculations
       Shape shape = f.getShape();
-      
-      sc.set(0,0);
+
+      mSC.set(Vector2.Zero);
       float sarea;
       switch (shape.getType())
       {
          case Circle:
-            sarea  = B2ShapeExtensions.ComputeSubmergedArea((CircleShape)shape,normal, offset, body.getTransform(), sc);
+            sarea = B2ShapeExtensions.ComputeSubmergedArea((CircleShape) shape,mSurfaceNormal, mSurfaceHeight, body.getTransform(), mSC);
             break;
-            
+
          case Chain:
-            sarea  = B2ShapeExtensions.ComputeSubmergedArea((ChainShape)shape,normal, offset, body.getTransform(), sc);
+            sarea = B2ShapeExtensions.ComputeSubmergedArea((ChainShape) shape,mSurfaceNormal, mSurfaceHeight, body.getTransform(), mSC);
             break;
-            
+
          case Edge:
-            sarea  = B2ShapeExtensions.ComputeSubmergedArea((EdgeShape)shape,normal, offset, body.getTransform(), sc);
+            sarea = B2ShapeExtensions.ComputeSubmergedArea((EdgeShape) shape,mSurfaceNormal, mSurfaceHeight, body.getTransform(), mSC);
             break;
-            
+
          case Polygon:
-            sarea  = B2ShapeExtensions.ComputeSubmergedArea((PolygonShape)shape,normal, offset, body.getTransform(), sc);
+            sarea = B2ShapeExtensions.ComputeSubmergedArea((PolygonShape) shape, mSurfaceNormal, mSurfaceHeight, body.getTransform(),mSC);
             break;
-            
+
          default:
             sarea = 0;
             break;
       }
-      
-      area += sarea;
-      areac.x += sarea * sc.x;
-      areac.y += sarea * sc.y;
-      float shapeDensity = useDensity ? f.getDensity() : density;
-      mass += sarea * shapeDensity;
-      massc.x += sarea * sc.x * shapeDensity;
-      massc.y += sarea * sc.y * shapeDensity;         
 
-      areac.x /= area;
-      areac.y /= area;
-      massc.x /= mass;
-      massc.y /= mass;
-      if(area < Float.MIN_VALUE) {
+      area += sarea;
+      mAreac.x += sarea * mSC.x;
+      mAreac.y += sarea * mSC.y;
+      float shapeDensity = mUseDensity ? f.getDensity() : mFluidDensity;
+      mass += sarea * shapeDensity;
+      mMassc.x += sarea * mSC.x * shapeDensity;
+      mMassc.y += sarea * mSC.y * shapeDensity;
+
+      mAreac.x /= area;
+      mAreac.y /= area;
+      mMassc.x /= mass;
+      mMassc.y /= mass;
+      if (area < Float.MIN_VALUE)
+      {
          return false;
       }
 
+      if (DEBUG_BUOYANCY)
+      {
+         // Run debug w/HCR to see the effects fo different fluid densities / linear drag
+         mFluidDensity = 0.0025f;
+         mLinearDrag = 0.01f;
+         mAngularDrag = 2;
+      }
+      
       // buoyancy force.
-      body.applyForce(tmp.set(gravity).mul(-density * area), massc); // multiply by -density to invert gravity  (combining a couple of operations)
+      mTmp.set(mGravity).mul(-mFluidDensity * area);
+      body.applyForce(mTmp, mMassc); // multiply by -density to invert gravity
+      
       // linear drag.
-      body.applyForce(
-         body.getLinearVelocityFromWorldPoint(areac)
-         .sub(velocity)
-         .mul(-linearDrag * area),
-         areac);
-      /// angular drag.
-      float torque = -body.getInertia() / body.getMass() * area * body.getAngularVelocity() * angularDrag;
+      mTmp.set(body.getLinearVelocityFromWorldPoint(mAreac).sub(mFluidVelocity).mul(-mLinearDrag * area));
+      body.applyForce(mTmp, mAreac);
+      
+      // angular drag.
+      float bodyMass = body.getMass();
+      if (bodyMass < 1) // prevent a huge torque from being generated...
+      {
+         bodyMass = 1;
+      }
+      float torque = -body.getInertia() / bodyMass * area * body.getAngularVelocity() * mAngularDrag;
       body.applyTorque(torque);
       return true;
    }
-   
+
    @Override
    public void step(float timeStep)
    {

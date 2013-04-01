@@ -99,11 +99,17 @@ public class B2BuoyancyController extends B2Controller
     */
    private boolean ApplyToFixture(Fixture f)
    {
+      float shapeDensity = mUseDensity ? f.getDensity() : mFluidDensity;
+      
+      // don't bother with buoyancy on sensors or fixtures with no density
+      if (f.isSensor() || (shapeDensity == 0))
+      {
+         return false;
+      }
       Body body = f.getBody();
       mAreac.set(Vector2.Zero);
       mMassc.set(Vector2.Zero);
       float area = 0;
-      float mass = 0;
 
       // Get shape for displacement area calculations
       Shape shape = f.getShape();
@@ -136,8 +142,7 @@ public class B2BuoyancyController extends B2Controller
       area += sarea;
       mAreac.x += sarea * mSC.x;
       mAreac.y += sarea * mSC.y;
-      float shapeDensity = mUseDensity ? f.getDensity() : mFluidDensity;
-      mass += sarea * shapeDensity;
+      float mass = sarea * shapeDensity;
       mMassc.x += sarea * mSC.x * shapeDensity;
       mMassc.y += sarea * mSC.y * shapeDensity;
 
@@ -153,7 +158,7 @@ public class B2BuoyancyController extends B2Controller
       if (DEBUG_BUOYANCY)
       {
          // Run debug w/HCR to see the effects of different fluid densities / linear drag
-         mFluidDensity = 0.5f;
+         mFluidDensity = 2f;
          mLinearDrag = 5;
          mAngularDrag = 2;
       }
